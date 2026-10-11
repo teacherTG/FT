@@ -552,31 +552,47 @@
                 title: '4. 맞춤형 운동 처방',
                 subItems: [
                     {
-                        title: '🎛️ 1. FITT 제어판 설정',
+                        title: '🎛️ 1. FITT',
                         content: `
-                            <p class="mb-4 text-slate-300 text-lg">내 약점을 알았다면 약을 처방받아야죠! 의사 선생님이 약을 주듯, 내 몸에 딱 맞는 운동 계획을 세우는 걸 <strong class="text-sys-info">운동 처방</strong>이라고 해요. 제어판에서 4가지를 조절합니다.</p>
+                            <p class="mb-4 text-slate-300 text-lg">내 약점을 알았다면 약을 처방받아야죠! 의사 선생님이 약을 주듯, 내 몸에 딱 맞는 운동 계획을 세우는 걸 <strong class="text-sys-info">운동 처방</strong>이라고 해요. 제어판에서 4가지(FITT)를 조절합니다.</p>
                             
                             <!-- Visual Component: Control Panel -->
-                            <div class="my-6 grid grid-cols-2 sm:grid-cols-4 gap-4 bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-700 shadow-[inset_0_2px_15px_rgba(0,0,0,0.5)]">
-                                <div class="bg-slate-800 flex flex-col items-center p-3 sm:p-4 rounded-xl border border-slate-600 border-b-[4px] border-b-sys-info">
-                                    <i class="fa-regular fa-calendar-days text-3xl sm:text-4xl text-sys-info mb-2"></i>
-                                    <span class="font-mono text-white font-bold text-xl">F</span>
-                                    <span class="text-xs sm:text-sm text-slate-400 mt-1">Frequency (빈도)</span>
+                            <div class="my-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div class="bg-slate-800 p-4 rounded-xl border border-slate-600 border-l-[4px] border-l-sys-info flex items-start gap-4">
+                                    <div class="flex-shrink-0 flex flex-col items-center justify-center w-12 h-12 bg-slate-900 rounded-lg shadow-inner">
+                                        <span class="font-mono text-sys-info font-bold text-2xl">F</span>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-white font-bold text-lg mb-1">Frequency (빈도)</h4>
+                                        <p class="text-slate-400 text-sm sm:text-base">일주일 동안 <strong>'얼마나 자주'</strong> 운동할 것인지 정합니다. <br/><span class="text-sys-info">(예: 일주일에 3회)</span></p>
+                                    </div>
                                 </div>
-                                <div class="bg-slate-800 flex flex-col items-center p-3 sm:p-4 rounded-xl border border-slate-600 border-b-[4px] border-b-sys-danger">
-                                    <i class="fa-solid fa-fire-flame-curved text-3xl sm:text-4xl text-sys-danger mb-2"></i>
-                                    <span class="font-mono text-white font-bold text-xl">I</span>
-                                    <span class="text-xs sm:text-sm text-slate-400 mt-1">Intensity (강도)</span>
+                                <div class="bg-slate-800 p-4 rounded-xl border border-slate-600 border-l-[4px] border-l-sys-danger flex items-start gap-4">
+                                    <div class="flex-shrink-0 flex flex-col items-center justify-center w-12 h-12 bg-slate-900 rounded-lg shadow-inner">
+                                        <span class="font-mono text-sys-danger font-bold text-2xl">I</span>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-white font-bold text-lg mb-1">Intensity (강도)</h4>
+                                        <p class="text-slate-400 text-sm sm:text-base">운동을 <strong>'얼마나 세게(힘들게)'</strong> 할 것인지 정합니다. <br/><span class="text-sys-danger">(예: 최대 심박수의 60%)</span></p>
+                                    </div>
                                 </div>
-                                <div class="bg-slate-800 flex flex-col items-center p-3 sm:p-4 rounded-xl border border-slate-600 border-b-[4px] border-b-sys-warning">
-                                    <i class="fa-solid fa-stopwatch text-3xl sm:text-4xl text-sys-warning mb-2"></i>
-                                    <span class="font-mono text-white font-bold text-xl">T</span>
-                                    <span class="text-xs sm:text-sm text-slate-400 mt-1">Time (시간)</span>
+                                <div class="bg-slate-800 p-4 rounded-xl border border-slate-600 border-l-[4px] border-l-sys-warning flex items-start gap-4">
+                                    <div class="flex-shrink-0 flex flex-col items-center justify-center w-12 h-12 bg-slate-900 rounded-lg shadow-inner">
+                                        <span class="font-mono text-sys-warning font-bold text-2xl">T</span>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-white font-bold text-lg mb-1">Time (시간)</h4>
+                                        <p class="text-slate-400 text-sm sm:text-base">한 번 운동할 때 <strong>'얼마나 오래'</strong> 할 것인지 정합니다. <br/><span class="text-sys-warning">(예: 1회당 40분)</span></p>
+                                    </div>
                                 </div>
-                                <div class="bg-slate-800 flex flex-col items-center p-3 sm:p-4 rounded-xl border border-slate-600 border-b-[4px] border-b-sys-accent">
-                                    <i class="fa-solid fa-person-biking text-3xl sm:text-4xl text-sys-accent mb-2"></i>
-                                    <span class="font-mono text-white font-bold text-xl">T</span>
-                                    <span class="text-xs sm:text-sm text-slate-400 mt-1">Type (형태)</span>
+                                <div class="bg-slate-800 p-4 rounded-xl border border-slate-600 border-l-[4px] border-l-sys-accent flex items-start gap-4">
+                                    <div class="flex-shrink-0 flex flex-col items-center justify-center w-12 h-12 bg-slate-900 rounded-lg shadow-inner">
+                                        <span class="font-mono text-sys-accent font-bold text-2xl">T</span>
+                                    </div>
+                                    <div>
+                                        <h4 class="text-white font-bold text-lg mb-1">Type (형태/종목)</h4>
+                                        <p class="text-slate-400 text-sm sm:text-base">나의 목표에 맞춰 <strong>'어떤 종류의 운동'</strong>을 할 것인지 정합니다. <br/><span class="text-sys-accent">(예: 달리기, 자전거)</span></p>
+                                    </div>
                                 </div>
                             </div>
                         `
@@ -607,10 +623,10 @@
                             <p class="text-slate-300 text-base sm:text-lg">이 206이라는 숫자를 기준으로 "오늘은 내 한계의 60% 정도로만 뛰어보자"라고 목표를 정하는 거예요.</p>
                         `,
                         miniQuiz: {
-                            question: "Q. 14세 중학생 지민이의 '최대 심박수'는 1분에 몇 회일까요?",
-                            options: ["196회", "206회", "216회"],
-                            answer: "206회",
-                            explanation: "최대 심박수는 '220 - 나이'로 계산하므로, 220 - 14 = 206회입니다."
+                            question: "Q. 16세인 중학교 3학년 지훈이 선배의 '최대 심박수'는 1분에 몇 회일까요?",
+                            options: ["194회", "204회", "214회"],
+                            answer: "204회",
+                            explanation: "최대 심박수는 '220 - 나이'로 계산하므로, 220 - 16 = 204회입니다."
                         }
                     },
                     {
@@ -721,7 +737,11 @@
                 try {
                     const prompt = `당신은 중학교 1학년 체육 교사입니다. '나의 몸 OS 업데이트(체력운동)'에 대한 객관식 퀴즈 3개를 출제하세요.
                     범위: 체력의 개념(신체활동vs운동), 6대 원리(과부하, 점진성, 개별성, 전면성, 반복성, 특수성), PAPS(체력측정), FITT 처방, 1RM, 최대심박수(220-나이).
-                    매번 조금씩 다른 주제나 비유를 섞어서 새로운 문제를 만들어주세요. 난이도는 중학교 1학년 수준입니다.
+                    
+                    [매우 중요] 
+                    사용자가 계속해서 새로운 문제를 원하고 있습니다. 이전에 출제했던 문제와 겹치지 않도록, 다음의 무작위 키(Random Seed: ${Math.random()})를 바탕으로 완전히 새롭고 창의적인 비유(게임, 학교생활, 음식, 취미 등)를 사용하여 새로운 3문제를 만들어주세요.
+
+                    난이도는 중학교 1학년 수준입니다.
                     반드시 아래의 JSON 스키마를 엄격하게 따르세요. 마크다운 기호 없이 순수 JSON 배열만 출력하세요.`;
 
                     const payload = {
@@ -771,6 +791,18 @@
                             options: ["과부하의 원리", "점진성의 원리", "전면성의 원리", "특수성의 원리"],
                             answer: "전면성의 원리",
                             explanation: "전면성의 원리는 상체, 하체, 코어 등 모든 신체 부위를 골고루 발달시켜야 한다는 원리입니다."
+                        },
+                        {
+                            question: "[백업 모드] 14세 중학생 지민이의 '최대 심박수'는 1분에 몇 회일까요?",
+                            options: ["196회", "206회", "216회", "226회"],
+                            answer: "206회",
+                            explanation: "최대 심박수는 '220 - 나이'로 계산하므로, 220 - 14 = 206회입니다."
+                        },
+                        {
+                            question: "[백업 모드] 운동 처방을 뜻하는 'FITT' 중에서, 운동을 '얼마나 세게(힘들게)' 할 것인지를 나타내는 알파벳은 무엇일까요?",
+                            options: ["Frequency (빈도)", "Intensity (강도)", "Time (시간)", "Type (형태)"],
+                            answer: "Intensity (강도)",
+                            explanation: "Intensity는 운동의 강도를 의미하며, 유산소는 '목표 심박수', 근력 운동은 '1RM' 등을 기준으로 설정합니다."
                         }
                     ]);
                     setQuizState('playing');
