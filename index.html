@@ -734,19 +734,30 @@
 
             const generateQuestions = async () => {
                 setQuizState('generating');
+                setCurrentIndex(0);
+                setScore(0);
+                setSelectedAnswer(null);
+                setHint("");
+                
                 try {
-                    const prompt = `당신은 중학교 1학년 체육 교사입니다. '나의 몸 OS 업데이트(체력운동)'에 대한 객관식 퀴즈 3개를 출제하세요.
+                    const themes = ['유명 게임(RPG, FPS 등)', '중학교 학교생활', '마라탕이나 떡볶이 등 배달 음식', '아이돌이나 K-POP', '판타지 영화나 히어로물', '반려동물 키우기', '우주 탐험', '좀비 서바이벌'];
+                    const randomTheme = themes[Math.floor(Math.random() * themes.length)];
+                    const timeSeed = new Date().getTime();
+
+                    const prompt = `당신은 중학교 1학년 체육 교사입니다. '나의 몸 OS 업데이트(체력운동)'에 대한 객관식 퀴즈 10개를 출제하세요.
                     범위: 체력의 개념(신체활동vs운동), 6대 원리(과부하, 점진성, 개별성, 전면성, 반복성, 특수성), PAPS(체력측정), FITT 처방, 1RM, 최대심박수(220-나이).
                     
-                    [매우 중요] 
-                    사용자가 계속해서 새로운 문제를 원하고 있습니다. 이전에 출제했던 문제와 겹치지 않도록, 다음의 무작위 키(Random Seed: ${Math.random()})를 바탕으로 완전히 새롭고 창의적인 비유(게임, 학교생활, 음식, 취미 등)를 사용하여 새로운 3문제를 만들어주세요.
+                    [매우 중요 - 매번 완전히 새로운 문제 출제 조건] 
+                    1. 사용자가 '재시험'을 눌렀습니다. 이전에 출제했던 문제 패턴이나 문장 구조와 절대 겹치지 않게 하세요. (현재 난수: ${timeSeed})
+                    2. 이번 10문제는 특별히 **"${randomTheme}"** 테마의 창의적인 비유를 적극적으로 활용해서 재미있게 만들어주세요.
+                    3. 난이도는 중학교 1학년 수준으로, 헷갈리는 매력적인 오답을 포함하세요.
 
-                    난이도는 중학교 1학년 수준입니다.
                     반드시 아래의 JSON 스키마를 엄격하게 따르세요. 마크다운 기호 없이 순수 JSON 배열만 출력하세요.`;
 
                     const payload = {
                         contents: [{ parts: [{ text: prompt }] }],
                         generationConfig: {
+                            temperature: 1.2,
                             responseMimeType: "application/json",
                             responseSchema: {
                                 type: "ARRAY",
@@ -776,7 +787,10 @@
                     jsonText = jsonText.replace(/```json/g, '').replace(/```/g, '').trim();
                     const parsedQuestions = JSON.parse(jsonText);
                     
-                    if(parsedQuestions && parsedQuestions.length > 0) {
+                    if(parsedQuestions && parsedQuestions.length === 10) {
+                        setQuestions(parsedQuestions);
+                        setQuizState('playing');
+                    } else if (parsedQuestions && parsedQuestions.length > 0) {
                         setQuestions(parsedQuestions);
                         setQuizState('playing');
                     } else {
@@ -787,22 +801,64 @@
                     console.error("Quiz generation error:", error);
                     setQuestions([
                         {
-                            question: "[백업 모드] 체력 증진 6대 원리 중, 게임 캐릭터의 스탯을 공격력에만 몰빵하지 않고 체력, 방어력 등을 골고루 키워야 한다는 비유와 관련된 원리는?",
-                            options: ["과부하의 원리", "점진성의 원리", "전면성의 원리", "특수성의 원리"],
+                            question: "[백업 모드 1/10] 집에서 청소기를 돌리거나 심부름으로 마트에 걸어 다녀오는 등, 일상적인 모든 신체 움직임을 부르는 말은?",
+                            options: ["체력 훈련", "신체활동", "운동", "특수성 훈련"],
+                            answer: "신체활동",
+                            explanation: "목적을 가지고 계획적으로 하는 '운동'과 달리, 일상적인 움직임은 '신체활동'이라고 합니다."
+                        },
+                        {
+                            question: "[백업 모드 2/10] 내 평소 체력의 100%만 쓰지 않고, 105% 정도로 아주 살짝 한계를 넘는 자극을 주어야 체력이 레벨업 한다는 원리는?",
+                            options: ["과부하의 원리", "점진성의 원리", "반복성의 원리", "개별성의 원리"],
+                            answer: "과부하의 원리",
+                            explanation: "일상 수준을 초과하는 자극(부하)을 주어야 몸이 성장한다는 것이 과부하의 원리입니다."
+                        },
+                        {
+                            question: "[백업 모드 3/10] 마라탕 맵기를 1단계부터 천천히 올리듯, 운동의 강도와 시간도 갑자기 늘리지 않고 차근차근 올려야 한다는 원리는?",
+                            options: ["전면성의 원리", "점진성의 원리", "특수성의 원리", "개별성의 원리"],
+                            answer: "점진성의 원리",
+                            explanation: "부상을 막기 위해 운동 강도를 서서히 높여가야 한다는 점진성의 원리입니다."
+                        },
+                        {
+                            question: "[백업 모드 4/10] 남들이 하는 어려운 운동을 억지로 따라 하지 않고, '내 체력 수준과 나이'에 딱 맞는 맞춤형 운동을 해야 한다는 원리는?",
+                            options: ["개별성의 원리", "반복성의 원리", "특수성의 원리", "과부하의 원리"],
+                            answer: "개별성의 원리",
+                            explanation: "사람마다 체력 수준이 다르므로 자신에게 맞는 운동을 해야 한다는 개별성의 원리입니다."
+                        },
+                        {
+                            question: "[백업 모드 5/10] 게임 캐릭터 스탯을 공격력에만 몰빵하면 안 되듯, 상체, 하체, 심폐지구력 등 모든 부위를 골고루 발달시켜야 한다는 원리는?",
+                            options: ["특수성의 원리", "개별성의 원리", "전면성의 원리", "점진성의 원리"],
                             answer: "전면성의 원리",
-                            explanation: "전면성의 원리는 상체, 하체, 코어 등 모든 신체 부위를 골고루 발달시켜야 한다는 원리입니다."
+                            explanation: "신체의 모든 부위와 체력 요소를 편식하지 않고 조화롭게 키워야 한다는 전면성의 원리입니다."
                         },
                         {
-                            question: "[백업 모드] 14세 중학생 지민이의 '최대 심박수'는 1분에 몇 회일까요?",
-                            options: ["196회", "206회", "216회", "226회"],
-                            answer: "206회",
-                            explanation: "최대 심박수는 '220 - 나이'로 계산하므로, 220 - 14 = 206회입니다."
+                            question: "[백업 모드 6/10] 오래 달리기를 잘하고 싶은데 방구석에서 역기만 들면 안 되듯, 나의 목표에 맞는 종목을 선택해야 한다는 원리는?",
+                            options: ["반복성의 원리", "특수성의 원리", "전면성의 원리", "과부하의 원리"],
+                            answer: "특수성의 원리",
+                            explanation: "자신이 발달시키고자 하는 특정 체력 요소에 맞는 운동을 선택해야 한다는 특수성의 원리입니다."
                         },
                         {
-                            question: "[백업 모드] 운동 처방을 뜻하는 'FITT' 중에서, 운동을 '얼마나 세게(힘들게)' 할 것인지를 나타내는 알파벳은 무엇일까요?",
+                            question: "[백업 모드 7/10] 학교에서 매년 PAPS(건강체력평가)를 하는 가장 중요한 진짜 목적은 무엇일까요?",
+                            options: ["친구들과 체력 점수로 경쟁하기 위해", "운동을 아예 안 해도 되는 핑계를 찾으려고", "내 몸의 약점(Bug)을 파악해서 맞춤 운동 계획을 짜기 위해", "체육 성적을 매기기 위해서만"],
+                            answer: "내 몸의 약점(Bug)을 파악해서 맞춤 운동 계획을 짜기 위해",
+                            explanation: "PAPS의 진짜 목적은 현재 내 체력의 장단점을 파악하고 그에 맞는 운동 처방을 내리기 위함입니다."
+                        },
+                        {
+                            question: "[백업 모드 8/10] 운동 처방을 뜻하는 'FITT' 중에서, 운동을 '얼마나 세게(힘들게)' 할 것인지를 나타내는 알파벳은 무엇일까요?",
                             options: ["Frequency (빈도)", "Intensity (강도)", "Time (시간)", "Type (형태)"],
                             answer: "Intensity (강도)",
                             explanation: "Intensity는 운동의 강도를 의미하며, 유산소는 '목표 심박수', 근력 운동은 '1RM' 등을 기준으로 설정합니다."
+                        },
+                        {
+                            question: "[백업 모드 9/10] 15세 중학생 지수의 유산소 운동 강도를 설정하기 위해 '최대 심박수'를 구하려고 합니다. 지수의 최대 심박수는 1분에 몇 회일까요?",
+                            options: ["195회", "205회", "215회", "225회"],
+                            answer: "205회",
+                            explanation: "최대 심박수는 '220 - 나이'로 계산하므로, 220 - 15 = 205회입니다."
+                        },
+                        {
+                            question: "[백업 모드 10/10] 근력 운동의 강도를 설정할 때 기준이 되는 '1RM'이 의미하는 것은 무엇일까요?",
+                            options: ["1분 동안 가장 빠르게 달린 거리", "정확한 자세로 딱 1번 들어 올릴 수 있는 최고 무게", "하루에 할 수 있는 최대 팔굽혀펴기 횟수", "1시간 동안 소모하는 칼로리 양"],
+                            answer: "정확한 자세로 딱 1번 들어 올릴 수 있는 최고 무게",
+                            explanation: "1RM(Repetition Maximum)은 1회 최대 반복을 의미하며, 자신의 100% 한계 근력을 뜻합니다."
                         }
                     ]);
                     setQuizState('playing');
