@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>체력 운동 복습 APP</title>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Noto Sans KR"', 'sans-serif'],
+                        mono: ['"Space Grotesk"', 'monospace'],
+                    },
+                    colors: {
+                        sys: {
+                            dark: '#0f172a',
+                            panel: '#1e293b',
+                            accent: '#10b981', // Emerald green
+                            accentHover: '#059669',
+                            text: '#f8fafc',
+                            muted: '#94a3b8',
+                            danger: '#ef4444',
+                            warning: '#f59e0b',
+                            info: '#3b82f6'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- React & Babel -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        .glitch-text {
+            position: relative;
+            display: inline-block;
+        }
+        .glitch-text::before, .glitch-text::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            opacity: 0.8;
+        }
+        .glitch-text::before {
+            left: 2px;
+            text-shadow: -2px 0 red;
+            clip: rect(24px, 550px, 90px, 0);
+            animation: glitch-anim 3s infinite linear alternate-reverse;
+        }
+        .glitch-text::after {
+            left: -2px;
+            text-shadow: -2px 0 blue;
+            clip: rect(85px, 550px, 140px, 0);
+            animation: glitch-anim 2.5s infinite linear alternate-reverse;
+        }
+        @keyframes glitch-anim {
+            0% { clip: rect(10px, 9999px, 44px, 0); }
+            20% { clip: rect(65px, 9999px, 96px, 0); }
+            40% { clip: rect(32px, 9999px, 12px, 0); }
+            60% { clip: rect(96px, 9999px, 55px, 0); }
+            80% { clip: rect(2px, 9999px, 86px, 0); }
+            100% { clip: rect(44px, 9999px, 23px, 0); }
+        }
+
+        /* Glass Panel */
+        .sys-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(51, 65, 85, 0.8);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .loader {
+            border: 3px solid rgba(16, 185, 129, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid #10b981;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="font-sans antialiased min-h-screen flex flex-col">
+    <div id="root" class="flex-grow flex flex-col"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- GEMINI API CONFIGURATION ---
+        const API_KEY = ""; // Canvas will provide this automatically. DO NOT add a key here.
+        const MODEL_FLASH = "gemini-3-flash-preview";
+        
+        // Helper to handle exponential backoff for fetch
+        const fetchWithRetry = async (url, options, retries = 3, delay = 1000) => {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    return response;
+                } catch (error) {
+                    if (i === retries - 1) throw error;
+                    await new Promise(res => setTimeout(res, delay * Math.pow(2, i)));
+                }
+            }
+        };
+
+        const reviewContent = [
+            {
+                id: 'concept',
+                icon: 'fa-battery-three-quarters',
+                title: '1. 체력의 개념',
+                subItems: [
+                    {
+                        title: '💪 건강 체력 (생존 배터리)',
+                        content: `
+                            <p class="mb-3 text-slate-300 text-lg">일상생활을 지치지 않고 활기차게 보내기 위해 꼭 필요한 <strong class="text-sys-accent">우리 몸의 기본 생존 배터리</strong>예요. 하루 종일 학교에서 공부하고 친구들이랑 놀아도 안 피곤하려면 이 배터리가 커야 해요!</p>
+                            
+                            <!-- Visual Component: Battery -->
+                            <div class="my-6 flex flex-col sm:flex-row items-center justify-center gap-6 p-6 bg-slate-800/80 rounded-xl border border-slate-700 shadow-inner">
+                                <div class="relative w-full sm:w-64 h-24 sm:h-32 border-4 border-slate-500 rounded-lg p-2 bg-slate-900">
+                                    <div class="absolute right-[-14px] top-1/2 -translate-y-1/2 w-3 h-10 bg-slate-500 rounded-r-sm"></div>
+                                    <div class="w-[80%] h-full bg-sys-accent rounded-sm animate-pulse shadow-[0_0_15px_rgba(16,185,129,0.5)]"></div>
+                                </div>
+                                <div class="text-center sm:text-left mt-4 sm:mt-0">
+                                    <span class="font-mono text-sys-accent font-bold text-2xl sm:text-3xl block mb-2">80% 생존 배터리</span>
+                                    <span class="text-sm sm:text-base text-slate-400">지치지 않는 일상을 위한 필수 체력</span>
+                                </div>
+                            </div>
+
+                            <ul class="list-disc pl-5 text-base sm:text-lg text-slate-300 space-y-2">
+                                <li><strong class="text-sys-info">근력 & 근지구력:</strong> 무거운 책가방을 번쩍 들고(근력), 오래 매고 있을 수 있는 힘(근지구력)</li>
+                                <li><strong class="text-sys-info">심폐지구력:</strong> 지각할까봐 계단을 뛰어 올라가도 헉헉대지 않는 심장과 폐의 파워</li>
+                                <li><strong class="text-sys-info">유연성:</strong> 몸을 부드럽게 굽히고 뻗는 능력 (부상을 막아주는 방어막 역할!)</li>
+                                <li><strong class="text-sys-info">신체조성:</strong> 내 몸을 이루는 근육과 지방의 밸런스</li>
+                            </ul>
+                        `
+                    },
+                    {
+                        title: '⚡ 운동 체력 (스킬 배터리)',
+                        content: `
+                            <p class="mb-3 text-slate-300 text-lg">체육 시간이나 스포츠 경기를 할 때 <strong class="text-sys-warning">남들보다 멋지게 기술을 쓰기 위한 스킬 배터리</strong>예요. 피구할 때 공을 날렵하게 피하거나, 농구할 때 멋지게 슛을 넣으려면 이 체력이 필요하죠.</p>
+                            
+                            <!-- Visual Component: Skill Tree -->
+                            <div class="my-6 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 max-w-2xl mx-auto">
+                                <div class="bg-slate-800/80 p-4 sm:p-6 rounded-xl text-center border border-slate-700 hover:border-sys-warning transition-colors">
+                                    <i class="fa-solid fa-bolt text-sys-warning text-4xl sm:text-5xl mb-3 drop-shadow-md"></i><br>
+                                    <span class="text-base sm:text-lg font-bold text-white block mb-1">순발력</span>
+                                    <span class="text-xs sm:text-sm text-slate-400">폭발적인 스피드</span>
+                                </div>
+                                <div class="bg-slate-800/80 p-4 sm:p-6 rounded-xl text-center border border-slate-700 hover:border-sys-info transition-colors">
+                                    <i class="fa-solid fa-person-running text-sys-info text-4xl sm:text-5xl mb-3 drop-shadow-md"></i><br>
+                                    <span class="text-base sm:text-lg font-bold text-white block mb-1">민첩성</span>
+                                    <span class="text-xs sm:text-sm text-slate-400">빠른 방향 전환</span>
+                                </div>
+                                <div class="bg-slate-800/80 p-4 sm:p-6 rounded-xl text-center border border-slate-700 hover:border-pink-500 transition-colors">
+                                    <i class="fa-solid fa-scale-balanced text-pink-500 text-4xl sm:text-5xl mb-3 drop-shadow-md"></i><br>
+                                    <span class="text-base sm:text-lg font-bold text-white block mb-1">평형성</span>
+                                    <span class="text-xs sm:text-sm text-slate-400">흔들림 없는 밸런스</span>
+                                </div>
+                                <div class="bg-slate-800/80 p-4 sm:p-6 rounded-xl text-center border border-slate-700 hover:border-purple-500 transition-colors">
+                                    <i class="fa-solid fa-hand-sparkles text-purple-500 text-4xl sm:text-5xl mb-3 drop-shadow-md"></i><br>
+                                    <span class="text-base sm:text-lg font-bold text-white block mb-1">협응력</span>
+                                    <span class="text-xs sm:text-sm text-slate-400">정확한 타이밍</span>
+                                </div>
+                            </div>
+
+                            <ul class="list-disc pl-5 text-base sm:text-lg text-slate-300 space-y-2 mt-4">
+                                <li><strong class="text-sys-info">순발력:</strong> 제자리 멀리뛰기처럼 한 번에 '팍!' 하고 폭발적인 힘을 내는 능력</li>
+                                <li><strong class="text-sys-info">민첩성:</strong> 피구할 때 날아오는 공을 요리조리 빠르게 피하며 방향을 바꾸는 능력</li>
+                                <li><strong class="text-sys-info">평형성:</strong> 평균대 위에서 넘어지지 않고 중심을 잡는 밸런스 능력</li>
+                                <li><strong class="text-sys-info">협응력 & 반응시간:</strong> 눈으로 보고 손발이 딱딱 맞게 움직이는 타이밍!</li>
+                            </ul>
+                        `
+                    }
+                ]
+            },
+            {
+                id: 'principles',
+                icon: 'fa-microchip',
+                title: '2. 체력 증진 6대 원리',
+                subItems: [
+                    {
+                        title: '🔥 1. 과부하의 원리',
+                        content: `
+                            <strong class="text-sys-accent text-xl sm:text-2xl block mb-2">"게임도 맨날 제일 쉬운 모드만 하면 실력 안 늘죠?"</strong>
+                            <p class="text-slate-300 mb-4 text-base sm:text-lg">내 평소 체력(100%)만 써서는 배터리가 늘어나지 않아요. '어? 오늘 좀 힘든데?' 싶을 정도로 내 한계를 아주 살짝 넘는 <strong class="text-white">105%의 자극</strong>을 줘야 몸이 '아, 레벨업 해야겠다!' 하고 성장합니다.</p>
+                            
+                            <!-- Visual Component: Bar Chart -->
+                            <div class="my-5 bg-slate-800 p-4 sm:p-6 rounded-xl flex items-end h-48 sm:h-56 gap-2 sm:gap-4 border border-slate-700 relative overflow-hidden">
+                                <div class="w-1/3 bg-slate-600 h-[60%] rounded-t-lg flex flex-col justify-start items-center pt-2 sm:pt-4 text-white transition-all">
+                                    <i class="fa-solid fa-battery-half text-2xl sm:text-4xl mb-1 opacity-50"></i>
+                                    <span class="text-xs sm:text-sm font-bold">평소 (100%)</span>
+                                </div>
+                                <div class="w-1/3 bg-sys-danger h-[75%] rounded-t-lg flex flex-col justify-start items-center pt-2 sm:pt-4 text-white shadow-[0_0_15px_rgba(239,68,68,0.6)] z-10">
+                                    <i class="fa-solid fa-fire text-2xl sm:text-4xl mb-1"></i>
+                                    <span class="text-xs sm:text-sm font-bold">과부하 (105%)</span>
+                                </div>
+                                <div class="w-1/3 bg-sys-accent h-[90%] rounded-t-lg flex flex-col justify-start items-center pt-2 sm:pt-4 text-slate-900 shadow-[0_0_15px_rgba(16,185,129,0.5)]">
+                                    <i class="fa-solid fa-arrow-trend-up text-2xl sm:text-4xl mb-1"></i>
+                                    <span class="text-xs sm:text-sm font-bold text-center">체력 성장!</span>
+                                </div>
+                                <!-- Threshold Line -->
+                                <div class="absolute top-[40%] left-0 w-full border-t-2 border-dashed border-slate-400 opacity-50 pointer-events-none flex justify-end pr-2 sm:pr-4">
+                                    <span class="text-xs sm:text-sm text-slate-300 -mt-5 font-bold bg-slate-800 px-1">내 한계선</span>
+                                </div>
+                            </div>
+                        `
+                    },
+                    {
+                        title: '📈 2. 점진성의 원리',
+                        content: `
+                            <strong class="text-sys-accent text-xl sm:text-2xl block mb-2">"마라탕 1단계 먹다 갑자기 4단계 먹으면 배탈 나요!"</strong>
+                            <p class="text-slate-300 mb-4 text-base sm:text-lg">갑자기 200%의 힘을 쓰면 근육이 다치거나 몸이 고장 납니다. 마라탕 맵기를 천천히 올리듯, <strong class="text-white">운동의 강도와 시간도 계단 오르듯 차근차근</strong> 늘려야 안전하게 체력을 키울 수 있어요.</p>
+                            
+                            <!-- Visual Component: Stairs -->
+                            <div class="my-6 px-2 sm:px-6">
+                                <div class="flex items-end h-40 sm:h-48 gap-1 sm:gap-2 w-full max-w-2xl mx-auto relative">
+                                    <div class="flex-1 bg-slate-600 h-[20%] rounded-t-lg flex items-start justify-center pt-1 sm:pt-2 text-xs sm:text-sm font-bold text-white">Lv.1</div>
+                                    <div class="flex-1 bg-sys-info h-[40%] rounded-t-lg flex items-start justify-center pt-1 sm:pt-2 text-xs sm:text-sm font-bold text-white">Lv.2</div>
+                                    <div class="flex-1 bg-sys-warning h-[60%] rounded-t-lg flex items-start justify-center pt-1 sm:pt-2 text-xs sm:text-sm font-bold text-white">Lv.3</div>
+                                    <div class="flex-1 bg-sys-danger h-[80%] rounded-t-lg flex items-start justify-center pt-1 sm:pt-2 text-xs sm:text-sm font-bold text-white">Lv.4</div>
+                                    <div class="flex-1 bg-sys-accent h-[100%] rounded-t-lg flex flex-col items-center justify-start pt-2 sm:pt-4 text-xs sm:text-sm font-bold text-slate-900 shadow-[0_0_15px_rgba(16,185,129,0.5)]">
+                                        <i class="fa-solid fa-flag-checkered mb-1 text-base sm:text-lg"></i>목표
+                                    </div>
+                                    <!-- Jumping Character -->
+                                    <i class="fa-solid fa-person-walking-arrow-right absolute bottom-[45%] left-[45%] text-3xl sm:text-4xl text-white drop-shadow-lg"></i>
+                                </div>
+                            </div>
+                        `
+                    },
+                    {
+                        title: '👤 3. 개별성의 원리',
+                        content: `
+                            <strong class="text-sys-accent text-xl sm:text-2xl block mb-2">"발 사이즈 240인데 멋있다고 280 신으면 넘어집니다."</strong>
+                            <p class="text-slate-300 mb-4 text-base sm:text-lg">유튜브에 나오는 몸짱 어른들의 운동을 무작정 따라 할 필요 없어요. 내 성별, 나이, 그리고 지금 <strong class="text-white">내 체력 수준(레벨)에 딱 맞는 '내 사이즈'의 운동</strong>을 해야 효과가 있습니다.</p>
+                            
+                            <!-- Visual Component: Sizes -->
+                            <div class="my-5 flex justify-center items-end gap-4 sm:gap-10 bg-slate-800 p-4 sm:p-6 rounded-xl border border-slate-700">
+                                <div class="text-center opacity-40">
+                                    <i class="fa-solid fa-shoe-prints text-3xl sm:text-4xl mb-2 text-white"></i><br>
+                                    <span class="text-sm font-bold text-white hidden sm:block">동생 (작음)</span>
+                                </div>
+                                <div class="text-center text-sys-accent transform scale-110 sm:scale-125 mb-2 sm:mb-4">
+                                    <i class="fa-solid fa-shoe-prints text-5xl sm:text-6xl mb-3 drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]"></i><br>
+                                    <span class="text-xs sm:text-sm font-bold bg-sys-accent text-slate-900 px-2 py-1 rounded">내 발에 맞춤!</span>
+                                </div>
+                                <div class="text-center opacity-40">
+                                    <i class="fa-solid fa-shoe-prints text-[60px] sm:text-[80px] mb-2 text-sys-danger"></i><br>
+                                    <span class="text-sm font-bold text-sys-danger hidden sm:block">어른 (큼)</span>
+                                </div>
+                            </div>
+                        `
+                    },
+                    {
+                        title: '⚖️ 4. 전면성의 원리',
+                        content: `
+                            <strong class="text-sys-accent text-xl sm:text-2xl block mb-2">"게임 스탯을 공격력에만 몰빵하면 스치면 죽어요!"</strong>
+                            <p class="text-slate-300 mb-4 text-base sm:text-lg">상체만 키우고 하체가 부실하면 몸의 밸런스가 무너집니다. 상체, 하체, 코어, 심폐지구력 등 <strong class="text-white">몸의 모든 부위와 능력을 편식하지 않고 골고루</strong> 발달시켜야 진짜 건강해집니다.</p>
+                            
+                            <!-- Visual Component: Radar Chart UI -->
+                            <div class="my-5 flex flex-col sm:flex-row justify-center items-center gap-6 sm:gap-8 bg-slate-800 p-5 sm:p-6 rounded-xl border border-slate-700">
+                                <div class="relative w-32 h-32 sm:w-40 sm:h-40 flex justify-center items-center shrink-0">
+                                    <i class="fa-solid fa-hexagon-nodes text-[110px] sm:text-[130px] text-sys-accent/30 absolute"></i>
+                                    <i class="fa-solid fa-hexagon-nodes text-[70px] sm:text-[85px] text-sys-info absolute drop-shadow-lg"></i>
+                                    <i class="fa-solid fa-user-shield text-3xl sm:text-4xl text-white z-10"></i>
+                                </div>
+                                <div class="bg-slate-900 p-4 sm:p-5 rounded-xl border border-slate-700 w-full sm:w-auto">
+                                    <span class="text-sm text-sys-muted block mb-3 font-mono text-center sm:text-left">캐릭터 스탯 (균형 발달)</span>
+                                    <ul class="text-base sm:text-lg text-slate-200 space-y-3">
+                                        <li class="flex items-center justify-between gap-4"><span>상체</span> <div class="w-24 sm:w-32 h-2.5 bg-slate-700 rounded"><div class="w-[80%] h-full bg-sys-info rounded"></div></div></li>
+                                        <li class="flex items-center justify-between gap-4"><span>하체</span> <div class="w-24 sm:w-32 h-2.5 bg-slate-700 rounded"><div class="w-[85%] h-full bg-sys-info rounded"></div></div></li>
+                                        <li class="flex items-center justify-between gap-4"><span>코어</span> <div class="w-24 sm:w-32 h-2.5 bg-slate-700 rounded"><div class="w-[75%] h-full bg-sys-info rounded"></div></div></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        `
+                    },
+                    {
+                        title: '🔁 5. 반복성의 원리',
+                        content: `
+                            <strong class="text-sys-accent text-xl sm:text-2xl block mb-2">"일일 퀘스트를 매일매일 깨야 레벨업 하죠!"</strong>
+                            <p class="text-slate-300 mb-4 text-base sm:text-lg">중간고사 전날 벼락치기 하듯이 하루 10시간 운동한다고 다음 날 갑자기 몸짱이 되진 않아요. <strong class="text-white">매일매일 꾸준하게 규칙적으로 출석 체크(운동)</strong>를 해야 몸이 적응하고 바뀝니다.</p>
+                            
+                            <!-- Visual Component: Calendar -->
+                            <div class="my-5 max-w-sm mx-auto bg-slate-800 p-4 sm:p-5 rounded-xl border border-slate-700">
+                                <div class="flex justify-between items-center mb-3 border-b border-slate-700 pb-2">
+                                    <span class="font-bold text-white text-base sm:text-lg"><i class="fa-regular fa-calendar-check text-sys-accent mr-2"></i>이번 달 출석 퀘스트</span>
+                                </div>
+                                <div class="grid grid-cols-7 gap-1.5 sm:gap-2 text-center text-xs sm:text-sm font-mono">
+                                    <div class="text-slate-500 mb-1 font-bold">M</div><div class="text-slate-500 mb-1 font-bold">T</div><div class="text-slate-500 mb-1 font-bold">W</div><div class="text-slate-500 mb-1 font-bold">T</div><div class="text-slate-500 mb-1 font-bold">F</div><div class="text-slate-500 mb-1 font-bold">S</div><div class="text-sys-danger opacity-70 mb-1 font-bold">S</div>
+                                    <div class="bg-sys-accent/20 text-sys-accent rounded-lg p-1.5 border border-sys-accent/50"><i class="fa-solid fa-check"></i></div>
+                                    <div class="bg-sys-accent/20 text-sys-accent rounded-lg p-1.5 border border-sys-accent/50"><i class="fa-solid fa-check"></i></div>
+                                    <div class="bg-slate-700 rounded-lg p-1.5"></div>
+                                    <div class="bg-sys-accent/20 text-sys-accent rounded-lg p-1.5 border border-sys-accent/50"><i class="fa-solid fa-check"></i></div>
+                                    <div class="bg-sys-accent/20 text-sys-accent rounded-lg p-1.5 border border-sys-accent/50"><i class="fa-solid fa-check"></i></div>
+                                    <div class="bg-slate-700 rounded-lg p-1.5"></div>
+                                    <div class="bg-sys-accent text-slate-900 font-bold rounded-lg p-1.5 text-base sm:text-lg shadow-[0_0_10px_rgba(16,185,129,0.6)]"><i class="fa-solid fa-gift"></i></div>
+                                </div>
+                            </div>
+                        `
+                    },
+                    {
+                        title: '🎯 6. 특수성의 원리',
+                        content: `
+                            <strong class="text-sys-accent text-xl sm:text-2xl block mb-2">"내일이 영어 시험인데 수학 공부하면 안 되겠죠?"</strong>
+                            <p class="text-slate-300 mb-4 text-base sm:text-lg">내가 오래 달리기를 잘하고 싶은데 방구석에서 무거운 역기만 든다면 목표랑 안 맞겠죠? <strong class="text-white">내가 이루고 싶은 목적(유연성, 근력 등)에 딱 맞는 종목</strong>을 골라서 훈련해야 합니다.</p>
+                            
+                            <!-- Visual Component: Target -->
+                            <div class="my-5 flex flex-col sm:flex-row justify-center items-center gap-6 bg-slate-800 p-5 sm:p-6 rounded-xl border border-slate-700">
+                                <div class="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full border-[5px] border-slate-600 flex items-center justify-center bg-slate-700 shrink-0">
+                                    <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-full border-[5px] border-sys-danger flex items-center justify-center bg-slate-800">
+                                        <div class="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-sys-danger animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.8)]"></div>
+                                    </div>
+                                    <i class="fa-solid fa-arrow-pointer absolute -bottom-2 -right-3 text-3xl sm:text-4xl text-white drop-shadow-xl transform -rotate-12"></i>
+                                </div>
+                                <div class="bg-slate-900 p-4 sm:p-5 rounded-xl text-base sm:text-lg border border-slate-700 w-full sm:w-auto">
+                                    <p class="mb-2 pb-2 border-b border-slate-700"><span class="text-white font-bold"><i class="fa-solid fa-bullseye text-sys-danger mr-2"></i>목표:</span> 마라톤 완주</p>
+                                    <p class="mb-1 text-slate-300"><i class="fa-solid fa-circle-check text-sys-accent mr-2"></i>달리기 훈련 <span class="text-sys-accent font-bold">(O)</span></p>
+                                    <p class="text-slate-300"><i class="fa-solid fa-circle-xmark text-sys-danger mr-2"></i>역기 들기 <span class="text-sys-danger font-bold">(X)</span></p>
+                                </div>
+                            </div>
+                        `
+                    }
+                ]
+            },
+            {
+                id: 'paps',
+                icon: 'fa-magnifying-glass-chart',
+                title: '3. PAPS (체력 측정)',
+                subItems: [
+                    {
+                        title: '🔍 1. 왜 측정할까요?',
+                        content: `
+                            <p class="mb-3 text-slate-300 text-lg">운동을 무작정 시작하기 전에, 지금 내 배터리가 몇 %인지 알아야 부상을 막을 수 있어요.</p>
+                            <p class="text-slate-300 text-lg mb-5">측정을 하고 나면 등급이 나오는데, 중요한 건 숫자가 아닙니다! <strong class="text-sys-warning">"아, 나는 유연성이 부족하구나" 하고 내 몸의 Bug(약점)를 찾는 것</strong>이 체력 측정의 진짜 목적이에요. 약점을 알아야 그걸 채우는 운동 계획을 짤 수 있으니까요!</p>
+                            
+                            <!-- Visual Component: Bug finding -->
+                            <div class="my-5 flex flex-col sm:flex-row justify-center items-center bg-slate-800 p-5 rounded-xl border border-slate-700 border-l-4 border-l-sys-warning gap-4 sm:gap-6">
+                                <div class="relative shrink-0">
+                                    <i class="fa-solid fa-file-medical text-5xl sm:text-6xl text-slate-400"></i>
+                                    <i class="fa-solid fa-magnifying-glass absolute -bottom-2 -right-3 text-3xl sm:text-4xl text-sys-warning drop-shadow-md"></i>
+                                    <i class="fa-solid fa-bug absolute top-2 left-3 text-2xl text-sys-danger"></i>
+                                </div>
+                                <div class="text-center sm:text-left">
+                                    <span class="text-sys-warning font-bold block text-lg sm:text-xl mb-1">내 몸의 Bug(약점) 발견 완료!</span>
+                                    <span class="text-slate-400 text-sm sm:text-base block">이제 이 약점을 보완할 패치(운동 처방)를 다운로드 할 수 있습니다.</span>
+                                </div>
+                            </div>
+                        `
+                    },
+                    {
+                        title: '🏃 2. 어떤 걸 측정하나요?',
+                        content: `
+                            <p class="mb-4 text-slate-300 text-lg">학교에서 매년 하는 건강체력평가(PAPS)의 주요 측정 종목입니다.</p>
+                            
+                            <!-- Visual Component: Photo Grid -->
+                            <div class="my-5 grid grid-cols-2 gap-3 text-center text-white">
+                                <div class="bg-slate-800 p-3 rounded-xl border border-slate-700 hover:border-sys-info transition-all relative overflow-hidden group">
+                                    <div class="w-full h-24 sm:h-28 bg-slate-700 rounded-lg flex items-center justify-center mb-2">
+                                        <i class="fa-solid fa-hand-fist text-4xl text-slate-500 group-hover:text-sys-info transition-colors"></i>
+                                    </div>
+                                    <span class="font-bold block text-base sm:text-lg">근력 측정</span>
+                                    <span class="text-slate-400 font-normal text-xs sm:text-sm">악력, 팔굽혀펴기</span>
+                                </div>
+                                <div class="bg-slate-800 p-3 rounded-xl border border-slate-700 hover:border-sys-info transition-all relative overflow-hidden group">
+                                    <div class="w-full h-24 sm:h-28 bg-slate-700 rounded-lg flex items-center justify-center mb-2">
+                                        <i class="fa-solid fa-child-reaching text-4xl text-slate-500 group-hover:text-pink-400 transition-colors"></i>
+                                    </div>
+                                    <span class="font-bold block text-base sm:text-lg">유연성 측정</span>
+                                    <span class="text-slate-400 font-normal text-xs sm:text-sm">앉아윗몸앞으로굽히기</span>
+                                </div>
+                                <div class="bg-slate-800 p-3 rounded-xl border border-slate-700 hover:border-sys-info transition-all relative overflow-hidden group">
+                                    <div class="w-full h-24 sm:h-28 bg-slate-700 rounded-lg flex items-center justify-center mb-2">
+                                        <i class="fa-solid fa-person-running text-4xl text-slate-500 group-hover:text-sys-accent transition-colors"></i>
+                                    </div>
+                                    <span class="font-bold block text-base sm:text-lg">심폐지구력</span>
+                                    <span class="text-slate-400 font-normal text-xs sm:text-sm">셔틀런, 스텝테스트</span>
+                                </div>
+                                <div class="bg-slate-800 p-3 rounded-xl border border-slate-700 hover:border-sys-info transition-all relative overflow-hidden group">
+                                    <div class="w-full h-24 sm:h-28 bg-slate-700 rounded-lg flex items-center justify-center mb-2">
+                                        <i class="fa-solid fa-bolt text-4xl text-slate-500 group-hover:text-purple-400 transition-colors"></i>
+                                    </div>
+                                    <span class="font-bold block text-base sm:text-lg">순발력</span>
+                                    <span class="text-slate-400 font-normal text-xs sm:text-sm">제자리멀리뛰기, 50m</span>
+                                </div>
+                            </div>
+                        `
+                    },
+                    {
+                        title: '📊 3. 체력 측정 등급 기준',
+                        content: `
+                            <p class="mb-4 text-slate-300 text-lg">내 기록이 어느 정도인지 1등급부터 5등급까지 전체 기준표(중학교 1학년)를 확인해 보세요! 가로로 스크롤해서 볼 수 있습니다.</p>
+                            
+                            <!-- Shuttle Run Table -->
+                            <div class="mt-6 bg-slate-900 rounded-xl border border-slate-700 shadow-lg">
+                                <div class="bg-slate-800 p-3 text-center border-b border-slate-700 font-bold text-sys-info text-lg rounded-t-xl">
+                                    <i class="fa-solid fa-person-running mr-2"></i> 셔틀런 (심폐지구력)
+                                </div>
+                                <div class="overflow-x-auto w-full">
+                                    <div class="min-w-[650px] grid grid-cols-6 text-center text-sm">
+                                        <div class="p-2 border-r border-b border-slate-700 font-bold bg-slate-800/50 text-slate-300">성별</div>
+                                        <div class="p-2 border-r border-b border-slate-700 font-bold text-sys-accent bg-slate-800/50">1등급</div>
+                                        <div class="p-2 border-r border-b border-slate-700 font-bold text-sys-info bg-slate-800/50">2등급</div>
+                                        <div class="p-2 border-r border-b border-slate-700 font-bold text-sys-warning bg-slate-800/50">3등급</div>
+                                        <div class="p-2 border-r border-b border-slate-700 font-bold text-orange-400 bg-slate-800/50">4등급</div>
+                                        <div class="p-2 border-b border-slate-700 font-bold text-sys-danger bg-slate-800/50">5등급</div>
+                                        
+                                        <div class="p-2 border-r border-b border-slate-700 font-bold text-blue-400 flex items-center justify-center">남학생</div>
+                                        <div class="p-2 border-r border-b border-slate-700 text-white font-mono flex items-center justify-center">60회 이상</div>
+                                        <div class="p-2 border-r border-b border-slate-700 text-white font-mono flex items-center justify-center">50~59회</div>
+                                        <div class="p-2 border-r border-b border-slate-700 text-white font-mono flex items-center justify-center">40~49회</div>
+                                        <div class="p-2 border-r border-b border-slate-700 text-white font-mono flex items-center justify-center">27~39회</div>
+                                        <div class="p-2 border-b border-slate-700 text-white font-mono flex items-center justify-center">26회 이하</div>
+
+                                        <div class="p-2 border-r border-slate-700 font-bold text-pink-400 flex items-center justify-center">여학생</div>
+                                        <div class="p-2 border-r border-slate-700 text-white font-mono flex items-center justify-center">40회 이상</div>
+                                        <div class="p-2 border-r border-slate-700 text-white font-mono flex items-center justify-center">32~39회</div>
+                                        <div class="p-2 border-r border-slate-700 text-white font-mono flex items-center justify-center">23~31회</div>
+                                        <div class="p-2 border-r border-slate-700 text-white font-mono flex items-center justify-center">14~22회</div>
+                                        <div class="p-2 border-slate-700 text-white font-mono flex items-center justify-center">13회 이하</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Broad Jump Table -->
+                            <div class="mt-6 bg-slate-900 rounded-xl border border-slate-700 shadow-lg">
+                                <div class="bg-slate-800 p-3 text-center border-b border-slate-700 font-bold text-purple-400 text-lg rounded-t-xl">
+                                    <i class="fa-solid fa-bolt mr-2"></i> 제자리 멀리뛰기 (순발력)
+                                </div>
+                                <div class="overflow-x-auto w-full">
+                                    <div class="min-w-[650px] grid grid-cols-6 text-center text-sm">
+                                        <div class="p-2 border-r border-b border-slate-700 font-bold bg-slate-800/50 text-slate-300">성별</div>
+                                        <div class="p-2 border-r border-b border-slate-700 font-bold text-sys-accent bg-slate-800/50">1등급</div>
+                                        <div class="p-2 border-r border-b border-slate-700 font-bold text-sys-info bg-slate-800/50">2등급</div>
+                                        <div class="p-2 border-r border-b border-slate-700 font-bold text-sys-warning bg-slate-800/50">3등급</div>
+                                        <div class="p-2 border-r border-b border-slate-700 font-bold text-orange-400 bg-slate-800/50">4등급</div>
+                                        <div class="p-2 border-b border-slate-700 font-bold text-sys-danger bg-slate-800/50">5등급</div>
+                                        
+                                        <div class="p-2 border-r border-b border-slate-700 font-bold text-blue-400 flex items-center justify-center">남학생</div>
+                                        <div class="p-2 border-r border-b border-slate-700 text-white font-mono flex items-center justify-center">215cm 이상</div>
+                                        <div class="p-2 border-r border-b border-slate-700 text-white font-mono flex items-center justify-center">195~214cm</div>
+                                        <div class="p-2 border-r border-b border-slate-700 text-white font-mono flex items-center justify-center">170~194cm</div>
+                                        <div class="p-2 border-r border-b border-slate-700 text-white font-mono flex items-center justify-center">140~169cm</div>
+                                        <div class="p-2 border-b border-slate-700 text-white font-mono flex items-center justify-center">139cm 이하</div>
+
+                                        <div class="p-2 border-r border-slate-700 font-bold text-pink-400 flex items-center justify-center">여학생</div>
+                                        <div class="p-2 border-r border-slate-700 text-white font-mono flex items-center justify-center">165cm 이상</div>
+                                        <div class="p-2 border-r border-slate-700 text-white font-mono flex items-center justify-center">145~164cm</div>
+                                        <div class="p-2 border-r border-slate-700 text-white font-mono flex items-center justify-center">120~144cm</div>
+                                        <div class="p-2 border-r border-slate-700 text-white font-mono flex items-center justify-center">90~119cm</div>
+                                        <div class="p-2 border-slate-700 text-white font-mono flex items-center justify-center">89cm 이하</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Flexibility Table -->
+                            <div class="mt-6 bg-slate-900 rounded-xl border border-slate-700 shadow-lg">
+                                <div class="bg-slate-800 p-3 text-center border-b border-slate-700 font-bold text-pink-500 text-lg rounded-t-xl">
+                                    <i class="fa-solid fa-child-reaching mr-2"></i> 앉아윗몸앞으로굽히기 (유연성)
+                                </div>
+                                <div class="overflow-x-auto w-full">
+                                    <div class="min-w-[650px] grid grid-cols-6 text-center text-sm">
+                                        <div class="p-2 border-r border-b border-slate-700 font-bold bg-slate-800/50 text-slate-300">성별</div>
+                                        <div class="p-2 border-r border-b border-slate-700 font-bold text-sys-accent bg-slate-800/50">1등급</div>
+                                        <div class="p-2 border-r border-b border-slate-700 font-bold text-sys-info bg-slate-800/50">2등급</div>
+                                        <div class="p-2 border-r border-b border-slate-700 font-bold text-sys-warning bg-slate-800/50">3등급</div>
+                                        <div class="p-2 border-r border-b border-slate-700 font-bold text-orange-400 bg-slate-800/50">4등급</div>
+                                        <div class="p-2 border-b border-slate-700 font-bold text-sys-danger bg-slate-800/50">5등급</div>
+                                        
+                                        <div class="p-2 border-r border-b border-slate-700 font-bold text-blue-400 flex items-center justify-center">남학생</div>
+                                        <div class="p-2 border-r border-b border-slate-700 text-white font-mono flex items-center justify-center">16cm 이상</div>
+                                        <div class="p-2 border-r border-b border-slate-700 text-white font-mono flex items-center justify-center">11~15.9cm</div>
+                                        <div class="p-2 border-r border-b border-slate-700 text-white font-mono flex items-center justify-center">6~10.9cm</div>
+                                        <div class="p-2 border-r border-b border-slate-700 text-white font-mono flex items-center justify-center">0~5.9cm</div>
+                                        <div class="p-2 border-b border-slate-700 text-white font-mono flex items-center justify-center">마이너스</div>
+
+                                        <div class="p-2 border-r border-slate-700 font-bold text-pink-400 flex items-center justify-center">여학생</div>
+                                        <div class="p-2 border-r border-slate-700 text-white font-mono flex items-center justify-center">19cm 이상</div>
+                                        <div class="p-2 border-r border-slate-700 text-white font-mono flex items-center justify-center">15~18.9cm</div>
+                                        <div class="p-2 border-r border-slate-700 text-white font-mono flex items-center justify-center">10~14.9cm</div>
+                                        <div class="p-2 border-r border-slate-700 text-white font-mono flex items-center justify-center">5~9.9cm</div>
+                                        <div class="p-2 border-slate-700 text-white font-mono flex items-center justify-center">4.9cm 이하</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Grip Strength Table -->
+                            <div class="mt-6 bg-slate-900 rounded-xl border border-slate-700 shadow-lg mb-4">
+                                <div class="bg-slate-800 p-3 text-center border-b border-slate-700 font-bold text-sys-warning text-lg rounded-t-xl">
+                                    <i class="fa-solid fa-hand-fist mr-2"></i> 악력 (근력)
+                                </div>
+                                <div class="overflow-x-auto w-full">
+                                    <div class="min-w-[650px] grid grid-cols-6 text-center text-sm">
+                                        <div class="p-2 border-r border-b border-slate-700 font-bold bg-slate-800/50 text-slate-300">성별</div>
+                                        <div class="p-2 border-r border-b border-slate-700 font-bold text-sys-accent bg-slate-800/50">1등급</div>
+                                        <div class="p-2 border-r border-b border-slate-700 font-bold text-sys-info bg-slate-800/50">2등급</div>
+                                        <div class="p-2 border-r border-b border-slate-700 font-bold text-sys-warning bg-slate-800/50">3등급</div>
+                                        <div class="p-2 border-r border-b border-slate-700 font-bold text-orange-400 bg-slate-800/50">4등급</div>
+                                        <div class="p-2 border-b border-slate-700 font-bold text-sys-danger bg-slate-800/50">5등급</div>
+                                        
+                                        <div class="p-2 border-r border-b border-slate-700 font-bold text-blue-400 flex items-center justify-center">남학생</div>
+                                        <div class="p-2 border-r border-b border-slate-700 text-white font-mono flex items-center justify-center">36kg 이상</div>
+                                        <div class="p-2 border-r border-b border-slate-700 text-white font-mono flex items-center justify-center">31~35.9kg</div>
+                                        <div class="p-2 border-r border-b border-slate-700 text-white font-mono flex items-center justify-center">25~30.9kg</div>
+                                        <div class="p-2 border-r border-b border-slate-700 text-white font-mono flex items-center justify-center">19~24.9kg</div>
+                                        <div class="p-2 border-b border-slate-700 text-white font-mono flex items-center justify-center">18.9kg 이하</div>
+
+                                        <div class="p-2 border-r border-slate-700 font-bold text-pink-400 flex items-center justify-center">여학생</div>
+                                        <div class="p-2 border-r border-slate-700 text-white font-mono flex items-center justify-center">25kg 이상</div>
+                                        <div class="p-2 border-r border-slate-700 text-white font-mono flex items-center justify-center">22~24.9kg</div>
+                                        <div class="p-2 border-r border-slate-700 text-white font-mono flex items-center justify-center">18~21.9kg</div>
+                                        <div class="p-2 border-r border-slate-700 text-white font-mono flex items-center justify-center">14~17.9kg</div>
+                                        <div class="p-2 border-slate-700 text-white font-mono flex items-center justify-center">13.9kg 이하</div>
+                                    </div>
+                                </div>
+                            </div>
+                        `
+                    }
+                ]
+            },
+            {
+                id: 'fitt',
+                icon: 'fa-sliders',
+                title: '4. 맞춤형 운동 처방',
+                subItems: [
+                    {
+                        title: '🎛️ 1. FITT 제어판 설정',
+                        content: `
+                            <p class="mb-4 text-slate-300 text-lg">내 약점을 알았다면 약을 처방받아야죠! 의사 선생님이 약을 주듯, 내 몸에 딱 맞는 운동 계획을 세우는 걸 <strong class="text-sys-info">운동 처방</strong>이라고 해요. 제어판에서 4가지를 조절합니다.</p>
+                            
+                            <!-- Visual Component: Control Panel -->
+                            <div class="my-6 grid grid-cols-2 sm:grid-cols-4 gap-4 bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-700 shadow-[inset_0_2px_15px_rgba(0,0,0,0.5)]">
+                                <div class="bg-slate-800 flex flex-col items-center p-3 sm:p-4 rounded-xl border border-slate-600 border-b-[4px] border-b-sys-info">
+                                    <i class="fa-regular fa-calendar-days text-3xl sm:text-4xl text-sys-info mb-2"></i>
+                                    <span class="font-mono text-white font-bold text-xl">F</span>
+                                    <span class="text-xs sm:text-sm text-slate-400 mt-1">Frequency (빈도)</span>
+                                </div>
+                                <div class="bg-slate-800 flex flex-col items-center p-3 sm:p-4 rounded-xl border border-slate-600 border-b-[4px] border-b-sys-danger">
+                                    <i class="fa-solid fa-fire-flame-curved text-3xl sm:text-4xl text-sys-danger mb-2"></i>
+                                    <span class="font-mono text-white font-bold text-xl">I</span>
+                                    <span class="text-xs sm:text-sm text-slate-400 mt-1">Intensity (강도)</span>
+                                </div>
+                                <div class="bg-slate-800 flex flex-col items-center p-3 sm:p-4 rounded-xl border border-slate-600 border-b-[4px] border-b-sys-warning">
+                                    <i class="fa-solid fa-stopwatch text-3xl sm:text-4xl text-sys-warning mb-2"></i>
+                                    <span class="font-mono text-white font-bold text-xl">T</span>
+                                    <span class="text-xs sm:text-sm text-slate-400 mt-1">Time (시간)</span>
+                                </div>
+                                <div class="bg-slate-800 flex flex-col items-center p-3 sm:p-4 rounded-xl border border-slate-600 border-b-[4px] border-b-sys-accent">
+                                    <i class="fa-solid fa-person-biking text-3xl sm:text-4xl text-sys-accent mb-2"></i>
+                                    <span class="font-mono text-white font-bold text-xl">T</span>
+                                    <span class="text-xs sm:text-sm text-slate-400 mt-1">Type (형태)</span>
+                                </div>
+                            </div>
+                        `
+                    },
+                    {
+                        title: '❤️ 2. 목표 심박수 (유산소 강도)',
+                        content: `
+                            <p class="mb-4 text-slate-300 text-lg">숨이 차는 유산소 운동의 강도(I)를 정할 땐 내 심장이 1분 동안 최대한 뛸 수 있는 한계치인 <strong class="text-sys-info">최대 심박수</strong>를 알아야 해요.</p>
+                            
+                            <!-- Visual Component: Heart Rate -->
+                            <div class="my-5 flex flex-col sm:flex-row items-center justify-center gap-6 bg-slate-900 p-6 rounded-xl border border-slate-700 relative overflow-hidden">
+                                <div class="absolute inset-0 opacity-10 pointer-events-none flex items-center justify-center">
+                                    <svg viewBox="0 0 500 100" class="w-full stroke-sys-danger fill-none stroke-[4]">
+                                        <path d="M0,50 L50,50 L70,20 L90,80 L110,50 L500,50" />
+                                    </svg>
+                                </div>
+                                
+                                <i class="fa-solid fa-heart-pulse text-[60px] sm:text-[70px] text-sys-danger animate-pulse drop-shadow-[0_0_20px_rgba(239,68,68,0.8)] z-10"></i>
+                                
+                                <div class="text-center sm:text-left z-10 bg-slate-800/90 p-4 sm:p-5 rounded-xl border border-slate-600">
+                                    <span class="text-base sm:text-lg text-slate-300 block mb-2 font-mono"><i class="fa-solid fa-calculator mr-2"></i>최대 심박수 공식 (14세 기준)</span>
+                                    <span class="font-mono text-2xl sm:text-3xl font-bold text-white tracking-wider">
+                                        220 - 14 = <span class="text-sys-danger underline decoration-wavy underline-offset-4">206</span>
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <p class="text-slate-300 text-base sm:text-lg">이 206이라는 숫자를 기준으로 "오늘은 내 한계의 60% 정도로만 뛰어보자"라고 목표를 정하는 거예요.</p>
+                        `,
+                        miniQuiz: {
+                            question: "Q. 14세 중학생 지민이의 '최대 심박수'는 1분에 몇 회일까요?",
+                            options: ["196회", "206회", "216회"],
+                            answer: "206회",
+                            explanation: "최대 심박수는 '220 - 나이'로 계산하므로, 220 - 14 = 206회입니다."
+                        }
+                    },
+                    {
+                        title: '🏋️ 3. 1RM (근력 강도)',
+                        content: `
+                            <p class="mb-4 text-slate-300 text-lg">무거운 걸 드는 근력 운동의 강도(I)를 정할 땐 <strong class="text-sys-warning">1RM</strong>이라는 단어를 써요. 내가 정확한 자세로 딱 <strong>'1번'</strong> 들어 올릴 수 있는 최고 무거운 무게를 뜻해요.</p>
+                            
+                            <!-- Visual Component: 1RM -->
+                            <div class="my-5 bg-slate-800 p-5 rounded-xl border border-slate-700 text-center relative overflow-hidden group">
+                                <div class="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/40"></div>
+                                <div class="relative z-10 flex flex-col items-center justify-center">
+                                    <div class="bg-slate-900/90 px-5 py-3 rounded-xl border border-sys-warning shadow-xl backdrop-blur-md">
+                                        <span class="block text-sys-warning font-bold text-3xl font-mono mb-1">1RM</span>
+                                        <span class="block text-xs text-white uppercase tracking-widest font-mono">1 Repetition Maximum</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="p-4 sm:p-5 bg-slate-900 rounded-xl border border-slate-700 text-center mb-4 shadow-inner">
+                                <span class="text-sm text-sys-muted block mb-2">나의 100% 근력(1RM) 유추 공식</span>
+                                <span class="font-mono text-base sm:text-lg text-sys-warning font-bold">든 무게 + (든 무게 × 0.025 × 반복 횟수)</span>
+                            </div>
+                            <p class="text-slate-300 text-base sm:text-lg">매번 최고 무게를 들어볼 순 없으니, 가벼운 걸 여러 번 든 기록으로 내 1RM(100% 한계)을 알아낸 다음 계획을 세웁니다.</p>
+                        `,
+                        miniQuiz: {
+                            question: "Q. 철수가 40kg짜리 바벨을 딱 10번 들고 지쳤습니다. 철수의 1RM(100% 한계 근력)은 얼마일까요?",
+                            options: ["45kg", "50kg", "55kg"],
+                            answer: "50kg",
+                            explanation: "40kg + (40kg x 0.025 x 10회) = 40 + 10 = 50kg 입니다."
+                        }
+                    }
+                ]
+            }
+        ];
+
+        // --- MINI QUIZ COMPONENT ---
+        const MiniQuiz = ({ quiz }) => {
+            const [selected, setSelected] = useState(null);
+
+            useEffect(() => {
+                setSelected(null);
+            }, [quiz]);
+
+            if (!quiz) return null;
+
+            return (
+                <div className="mt-8 bg-slate-800/90 rounded-2xl border-2 border-sys-info p-5 sm:p-6 animate-[fadeIn_0.5s_ease-out] shadow-[0_4px_20px_rgba(59,130,246,0.2)]">
+                    <h4 className="text-sys-info font-bold mb-3 flex items-center text-lg sm:text-xl">
+                        <i className="fa-solid fa-gamepad mr-2 text-xl animate-bounce"></i> 깜짝 미니 퀴즈!
+                    </h4>
+                    <p className="text-white mb-5 text-base sm:text-lg leading-relaxed">{quiz.question}</p>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        {quiz.options.map((opt, idx) => {
+                            let btnClass = "flex-1 py-3 px-4 rounded-xl border transition-all duration-300 font-mono text-base font-bold ";
+                            if (selected) {
+                                if (opt === quiz.answer) {
+                                    btnClass += "bg-sys-accent border-sys-accent text-slate-900 shadow-[0_0_15px_rgba(16,185,129,0.5)] transform scale-105";
+                                } else if (opt === selected) {
+                                    btnClass += "bg-sys-danger/80 border-sys-danger text-white opacity-90";
+                                } else {
+                                    btnClass += "bg-slate-700/50 border-slate-600/50 text-slate-400 opacity-50";
+                                }
+                            } else {
+                                btnClass += "bg-slate-700 border-slate-600 text-slate-200 hover:bg-slate-600 hover:border-sys-info hover:-translate-y-1 active:translate-y-0 cursor-pointer shadow-md";
+                            }
+
+                            return (
+                                <button 
+                                    key={idx} 
+                                    onClick={() => !selected && setSelected(opt)}
+                                    disabled={selected !== null}
+                                    className={btnClass}
+                                >
+                                    {opt}
+                                </button>
+                            );
+                        })}
+                    </div>
+                    {selected && (
+                        <div className={`mt-5 p-4 rounded-xl text-base flex gap-3 items-start animate-[fadeIn_0.3s_ease-out] ${selected === quiz.answer ? 'bg-emerald-900/50 text-sys-accent border border-sys-accent/50' : 'bg-red-900/50 text-red-300 border border-sys-danger/50'}`}>
+                            <i className={`fa-solid mt-1 text-xl ${selected === quiz.answer ? 'fa-circle-check' : 'fa-triangle-exclamation'}`}></i>
+                            <div>
+                                <p className="font-bold mb-1 text-lg">
+                                    {selected === quiz.answer ? '정답입니다! 완벽해요!' : '아쉽네요, 오답입니다.'}
+                                </p>
+                                <p className="opacity-90 leading-relaxed text-slate-200 text-base">{quiz.explanation}</p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const QuizEngine = ({ onComplete }) => {
+            const [questions, setQuestions] = useState([]);
+            const [currentIndex, setCurrentIndex] = useState(0);
+            const [quizState, setQuizState] = useState('generating');
+            const [selectedAnswer, setSelectedAnswer] = useState(null);
+            const [hint, setHint] = useState("");
+            const [score, setScore] = useState(0);
+
+            useEffect(() => {
+                generateQuestions();
+            }, []);
+
+            const generateQuestions = async () => {
+                setQuizState('generating');
+                try {
+                    const prompt = `당신은 중학교 1학년 체육 교사입니다. '나의 몸 OS 업데이트(체력운동)'에 대한 객관식 퀴즈 3개를 출제하세요.
+                    범위: 체력의 개념(신체활동vs운동), 6대 원리(과부하, 점진성, 개별성, 전면성, 반복성, 특수성), PAPS(체력측정), FITT 처방, 1RM, 최대심박수(220-나이).
+                    매번 조금씩 다른 주제나 비유를 섞어서 새로운 문제를 만들어주세요. 난이도는 중학교 1학년 수준입니다.
+                    반드시 아래의 JSON 스키마를 엄격하게 따르세요. 마크다운 기호 없이 순수 JSON 배열만 출력하세요.`;
+
+                    const payload = {
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: {
+                            responseMimeType: "application/json",
+                            responseSchema: {
+                                type: "ARRAY",
+                                items: {
+                                    type: "OBJECT",
+                                    properties: {
+                                        question: { type: "STRING" },
+                                        options: { type: "ARRAY", items: { type: "STRING" }, description: "반드시 4개의 보기를 제공하세요." },
+                                        answer: { type: "STRING", description: "options 배열 중 정답과 정확히 일치하는 문자열" },
+                                        explanation: { type: "STRING", description: "정답인 이유 간략히" }
+                                    },
+                                    required: ["question", "options", "answer", "explanation"]
+                                }
+                            }
+                        }
+                    };
+
+                    const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_FLASH}:generateContent?key=${API_KEY}`;
+                    const res = await fetchWithRetry(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    const data = await res.json();
+                    let jsonText = data.candidates[0].content.parts[0].text;
+                    jsonText = jsonText.replace(/```json/g, '').replace(/```/g, '').trim();
+                    const parsedQuestions = JSON.parse(jsonText);
+                    
+                    if(parsedQuestions && parsedQuestions.length > 0) {
+                        setQuestions(parsedQuestions);
+                        setQuizState('playing');
+                    } else {
+                        throw new Error("Invalid question format");
+                    }
+
+                } catch (error) {
+                    console.error("Quiz generation error:", error);
+                    setQuestions([
+                        {
+                            question: "[백업 모드] 체력 증진 6대 원리 중, 게임 캐릭터의 스탯을 공격력에만 몰빵하지 않고 체력, 방어력 등을 골고루 키워야 한다는 비유와 관련된 원리는?",
+                            options: ["과부하의 원리", "점진성의 원리", "전면성의 원리", "특수성의 원리"],
+                            answer: "전면성의 원리",
+                            explanation: "전면성의 원리는 상체, 하체, 코어 등 모든 신체 부위를 골고루 발달시켜야 한다는 원리입니다."
+                        }
+                    ]);
+                    setQuizState('playing');
+                }
+            };
+
+            const getHint = async (questionText, wrongAnswer) => {
+                setQuizState('evaluating');
+                setHint("");
+                try {
+                    const prompt = `학생이 체육 퀴즈를 틀렸습니다. 정답을 직접적으로 알려주지 말고, 중학교 1학년 수준에 맞춰 게임, 마라탕, 학교생활 등의 친숙하고 재미있는 비유를 활용해 정답을 스스로 유추할 수 있도록 힌트를 1~2문장으로 주세요.
+                    문제: "${questionText}"
+                    학생이 고른 오답: "${wrongAnswer}"`;
+
+                    const payload = { contents: [{ parts: [{ text: prompt }] }] };
+                    const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_FLASH}:generateContent?key=${API_KEY}`;
+                    
+                    const res = await fetchWithRetry(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const data = await res.json();
+                    const hintText = data.candidates[0].content.parts[0].text;
+                    setHint(hintText);
+                } catch (error) {
+                    console.error("Hint generation error:", error);
+                    setHint("시스템 오류로 AI 힌트를 불러올 수 없습니다. 교재를 다시 한번 천천히 읽어보세요!");
+                }
+            };
+
+            const handleAnswerSelect = async (option) => {
+                if (quizState === 'evaluating') return;
+                setSelectedAnswer(option);
+                const currentQ = questions[currentIndex];
+
+                if (option === currentQ.answer) {
+                    setScore(prev => prev + 1);
+                    setTimeout(() => {
+                        handleNext();
+                    }, 1000); 
+                } else {
+                    await getHint(currentQ.question, option);
+                }
+            };
+
+            const handleNext = () => {
+                setHint("");
+                setSelectedAnswer(null);
+                if (currentIndex < questions.length - 1) {
+                    setCurrentIndex(prev => prev + 1);
+                    setQuizState('playing');
+                } else {
+                    setQuizState('result');
+                }
+            };
+
+            if (quizState === 'generating') {
+                return (
+                    <div className="flex flex-col items-center justify-center h-80 text-sys-accent">
+                        <div className="loader mb-5 w-10 h-10 border-4 border-t-sys-accent"></div>
+                        <p className="font-mono text-xl glitch-text" data-text="Connecting to System... Generating Diagnostic Test...">Connecting to System... Generating Diagnostic Test...</p>
+                    </div>
+                );
+            }
+
+            if (quizState === 'result') {
+                return (
+                    <div className="text-center p-6 sm:p-10 sys-panel rounded-xl animate-[fadeIn_0.5s_ease-out]">
+                        <i className={`fa-solid ${score === questions.length ? 'fa-check-circle text-sys-accent' : 'fa-triangle-exclamation text-sys-warning'} text-[80px] mb-5`}></i>
+                        <h2 className="text-3xl sm:text-4xl font-bold mb-3">진단 테스트 완료</h2>
+                        <p className="text-xl sm:text-2xl mb-6">최종 점수: <span className="font-mono text-sys-accent text-3xl font-bold">{score}</span> / {questions.length}</p>
+                        
+                        <div className="bg-slate-800 p-5 rounded-xl text-left mb-6 text-sys-muted text-lg sm:text-xl leading-relaxed">
+                            {score === questions.length ? 
+                                "완벽합니다! OS 업데이트 승인 조건이 모두 충족되었습니다. 당장 운동을 시작하셔도 좋습니다." : 
+                                "일부 시스템 패치가 필요합니다. 복습 메뉴얼을 다시 확인하고 재부팅(재도전) 해주세요."}
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row justify-center gap-4">
+                            <button onClick={generateQuestions} className="px-6 py-3 bg-slate-700 hover:bg-slate-600 rounded-lg font-bold text-lg transition-colors">
+                                <i className="fa-solid fa-rotate-right mr-2"></i>재시험
+                            </button>
+                            <button onClick={onComplete} className="px-6 py-3 bg-sys-accent hover:bg-sys-accentHover text-slate-900 rounded-lg font-bold text-lg transition-colors shadow-[0_0_15px_rgba(16,185,129,0.5)]">
+                                <i className="fa-solid fa-book-open mr-2"></i>복습 메뉴로
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            const currentQ = questions[currentIndex];
+
+            return (
+                <div className="sys-panel p-6 md:p-10 rounded-2xl max-w-3xl w-full mx-auto animate-[fadeIn_0.3s_ease-out] shadow-2xl">
+                    <div className="flex justify-between items-center mb-6 border-b-2 border-slate-700 pb-3">
+                        <h3 className="font-mono text-sys-accent font-bold text-xl">
+                            <i className="fa-solid fa-terminal mr-2"></i>Diagnostic_Q{currentIndex + 1}.exe
+                        </h3>
+                        <span className="text-sys-muted font-mono text-lg">{currentIndex + 1} / {questions.length}</span>
+                    </div>
+
+                    <p className="text-xl sm:text-2xl mb-6 leading-relaxed font-bold">{currentQ.question}</p>
+
+                    <div className="flex flex-col gap-3 mb-6">
+                        {currentQ.options.map((opt, idx) => {
+                            let btnStyle = "bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700";
+                            
+                            if (selectedAnswer === opt) {
+                                if (opt === currentQ.answer) {
+                                    btnStyle = "bg-sys-accent text-slate-900 border-sys-accent shadow-[0_0_15px_rgba(16,185,129,0.5)]"; 
+                                } else {
+                                    btnStyle = "bg-sys-danger text-white border-sys-danger opacity-75"; 
+                                }
+                            } else if (selectedAnswer && opt === currentQ.answer && selectedAnswer === currentQ.answer) {
+                                btnStyle = "bg-sys-accent text-slate-900 border-sys-accent"; 
+                            }
+
+                            return (
+                                <button 
+                                    key={idx}
+                                    onClick={() => handleAnswerSelect(opt)}
+                                    disabled={quizState === 'evaluating' || (selectedAnswer === currentQ.answer)}
+                                    className={`text-left p-4 rounded-xl border-2 transition-all duration-200 text-lg font-medium ${btnStyle} ${quizState === 'evaluating' ? 'cursor-not-allowed opacity-50' : ''}`}
+                                >
+                                    <span className="font-mono mr-3 opacity-50 text-lg">{idx + 1}.</span> {opt}
+                                </button>
+                            )
+                        })}
+                    </div>
+
+                    {quizState === 'evaluating' && hint === "" && (
+                        <div className="p-5 bg-slate-900 border-2 border-sys-warning rounded-xl text-sys-warning flex items-center">
+                            <div className="loader mr-3 border-sys-warning !border-t-yellow-200"></div>
+                            <span className="font-mono text-base font-bold">AI Coach 분석 중... 오답 원인을 파악하고 힌트를 생성합니다...</span>
+                        </div>
+                    )}
+
+                    {hint && selectedAnswer !== currentQ.answer && (
+                        <div className="p-5 bg-slate-900 border-2 border-sys-info rounded-xl animate-[fadeIn_0.3s_ease-out]">
+                            <h4 className="text-sys-info font-bold mb-2 flex items-center text-lg">
+                                <i className="fa-solid fa-robot mr-2 text-xl"></i>AI Coach의 힌트 도착!
+                            </h4>
+                            <p className="text-lg text-slate-200 leading-relaxed font-medium">{hint}</p>
+                            <p className="text-sm text-sys-muted mt-3 font-mono cursor-pointer hover:text-white" onClick={() => setSelectedAnswer(null)}>
+                                > 다시 풀어보려면 이곳을 클릭하거나 다른 보기를 선택하세요.
+                            </p>
+                        </div>
+                    )}
+
+                    {selectedAnswer === currentQ.answer && (
+                        <div className="p-5 bg-emerald-900/60 border-2 border-sys-accent rounded-xl text-sys-accent font-bold text-lg animate-[fadeIn_0.3s_ease-out]">
+                            <i className="fa-solid fa-circle-check mr-2 text-xl"></i>정답입니다! 다음 패치로 이동합니다...
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [currentView, setCurrentView] = useState('review'); 
+            const [expandedCategory, setExpandedCategory] = useState(0); 
+            const [activeContent, setActiveContent] = useState({ categoryIdx: 0, subIdx: 0 }); 
+
+            const renderReview = () => (
+                <div className="flex flex-col h-full max-w-6xl w-full mx-auto p-4 sm:p-6 animate-[fadeIn_0.3s_ease-out]">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4 sm:gap-6">
+                        <h2 className="text-2xl sm:text-3xl font-bold font-mono text-sys-info border-b-4 border-sys-info pb-2 inline-block">
+                            <i className="fa-solid fa-book-open mr-3"></i>체력 운동 복습 APP
+                        </h2>
+                        <button onClick={() => setCurrentView('quiz')} className="w-full sm:w-auto px-6 py-3 bg-sys-accent hover:bg-sys-accentHover text-slate-900 rounded-xl font-bold text-lg transition-all duration-300 shadow-[0_0_15px_rgba(16,185,129,0.4)] hover:shadow-[0_0_25px_rgba(16,185,129,0.7)] flex items-center justify-center transform hover:-translate-y-1">
+                            테스트 시작하기 <i className="fa-solid fa-arrow-right ml-3"></i>
+                        </button>
+                    </div>
+
+                    <div className="flex flex-col lg:flex-row gap-6 flex-grow">
+                        <div className="w-full lg:w-1/3 flex flex-col gap-3">
+                            {reviewContent.map((category, catIdx) => (
+                                <div key={category.id} className="flex flex-col gap-2">
+                                    <button
+                                        onClick={() => {
+                                            const isExpanding = expandedCategory !== catIdx;
+                                            setExpandedCategory(isExpanding ? catIdx : null);
+                                            if (isExpanding) {
+                                                setActiveContent({ categoryIdx: catIdx, subIdx: 0 });
+                                            }
+                                        }}
+                                        className={`text-left p-4 rounded-xl transition-all flex items-center justify-between shadow-md text-base sm:text-lg ${expandedCategory === catIdx ? 'bg-slate-700 text-white font-bold border-l-[6px] border-sys-info' : 'bg-slate-800/60 text-sys-muted hover:bg-slate-700/80 border-l-[6px] border-transparent'}`}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <i className={`fa-solid ${category.icon} w-8 text-center text-xl ${expandedCategory === catIdx ? 'text-sys-info' : ''}`}></i>
+                                            {category.title}
+                                        </div>
+                                        <i className={`fa-solid fa-chevron-${expandedCategory === catIdx ? 'up' : 'down'} text-base opacity-70`}></i>
+                                    </button>
+                                    
+                                    <div className={`flex flex-col gap-1 ml-5 border-l-2 border-slate-600 pl-3 overflow-hidden transition-all duration-300 ${expandedCategory === catIdx ? 'max-h-[500px] mt-2' : 'max-h-0'}`}>
+                                        {category.subItems.map((subItem, subIdx) => {
+                                            const isActive = activeContent.categoryIdx === catIdx && activeContent.subIdx === subIdx;
+                                            return (
+                                                <button
+                                                    key={subIdx}
+                                                    onClick={() => setActiveContent({ categoryIdx: catIdx, subIdx: subIdx })}
+                                                    className={`text-left p-3 rounded-lg transition-all text-base font-bold ${isActive ? 'bg-sys-info/20 text-sys-info shadow-inner border border-sys-info/30' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                                                >
+                                                    {subItem.title}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        
+                        <div className="w-full lg:w-2/3 sys-panel p-6 sm:p-8 rounded-2xl relative overflow-hidden flex flex-col justify-center min-h-[500px]">
+                            <i className={`fa-solid ${reviewContent[activeContent.categoryIdx].icon} absolute -bottom-10 -right-10 text-[120px] sm:text-[150px] text-slate-800/30`}></i>
+                            
+                            <h3 className="text-2xl sm:text-3xl font-bold mb-6 text-white z-10 relative flex items-center gap-3">
+                                {reviewContent[activeContent.categoryIdx].subItems[activeContent.subIdx].title}
+                            </h3>
+                            <div 
+                                className="z-10 relative text-base sm:text-lg leading-relaxed content-html bg-slate-900/40 p-5 sm:p-6 rounded-xl border border-slate-700/60 mb-3 shadow-inner"
+                                dangerouslySetInnerHTML={{__html: reviewContent[activeContent.categoryIdx].subItems[activeContent.subIdx].content}}
+                            />
+                            
+                            {reviewContent[activeContent.categoryIdx].subItems[activeContent.subIdx].miniQuiz && (
+                                <div className="z-10 relative">
+                                    <MiniQuiz quiz={reviewContent[activeContent.categoryIdx].subItems[activeContent.subIdx].miniQuiz} />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+
+            return (
+                <div className="flex flex-col flex-grow relative z-10">
+                    <header className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/60 backdrop-blur-md shadow-md">
+                        <div className="flex items-center gap-3 cursor-pointer" onClick={() => setCurrentView('review')}>
+                            <i className="fa-solid fa-heart-pulse text-sys-accent text-2xl"></i>
+                            <span className="font-mono font-bold tracking-widest text-base sm:text-lg">FITNESS_REVIEW_APP</span>
+                        </div>
+                        <div className="font-mono text-sm sm:text-base text-sys-muted bg-slate-800 px-3 py-1.5 rounded-full border border-slate-700">
+                            Status: <span className="text-sys-accent font-bold">Online</span>
+                        </div>
+                    </header>
+
+                    <main className="flex-grow flex flex-col items-center p-4 sm:p-6">
+                        {currentView === 'review' && renderReview()}
+                        {currentView === 'quiz' && (
+                            <div className="w-full flex-grow flex flex-col mt-6 sm:mt-10 relative">
+                                <button onClick={() => setCurrentView('review')} className="absolute -top-12 right-2 text-sys-muted hover:text-white transition-colors bg-slate-800 p-2 rounded-full w-10 h-10 flex justify-center items-center">
+                                    <i className="fa-solid fa-xmark text-2xl"></i>
+                                </button>
+                                <QuizEngine onComplete={() => setCurrentView('review')} />
+                            </div>
+                        )}
+                    </main>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+    
+    <!-- Utility style for injected HTML content -->
+    <style>
+        .content-html strong { color: #f8fafc; font-weight: 700; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</body>
+</html>
